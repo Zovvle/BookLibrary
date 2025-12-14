@@ -1,24 +1,64 @@
 {% extends "layout.html" %}
-{% block title%} 管理员登录 {% endblock%}
-{% block link%} 
-	<a href="{{ url_for('index')}}"> 返回  </a>
-{%  endblock %}
+
+{% block title %}管理员登录 - 西南科技大学图书管理系统{% endblock %}
+
 {% block body %}
-	<h2> 管理员登录 </h2>
-	{% if error %}
-	<div class=error>
-	  <strong>Error : </strong> {{ error }}
-	</div>
-	{% endif %}
-	<form action="" method=post>
-	  <dl>
-	    <dt>用户名: </dt>
-	    <dd><input type=text name=username size=30> </dd>
-	    <dt>密码:	</dt>
-	    <dd><input type=password name=password size=30> </dd>
-	  </dl>
-	  <div class=actions>
-	    <input type=submit value="登录">
-	  </div>
-	</form>
+<div style="max-width: 400px; margin: 40px auto; padding: 20px;">
+    <div class="card">
+        <div class="card-header">
+            <h2><i class="fas fa-user-shield"></i> 管理员登录</h2>
+        </div>
+        
+        <div style="padding: 20px;">
+            {% if error %}
+            <div style="background: #f8d7da; color: #721c24; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #dc3545;">
+                <i class="fas fa-exclamation-circle"></i> {{ error }}
+            </div>
+            {% endif %}
+            
+            <form method="post" action="{{ url_for('manager_login') }}">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #2c3e50;">
+                        <i class="fas fa-user"></i> 用户名
+                    </label>
+                    <input type="text" name="username" required 
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;"
+                           placeholder="请输入管理员用户名">
+                </div>
+                
+                <div style="margin-bottom: 25px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #2c3e50;">
+                        <i class="fas fa-lock"></i> 密码
+                    </label>
+                    <input type="password" name="password" required 
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;"
+                           placeholder="请输入密码">
+                </div>
+                
+                <button type="submit" 
+                        style="width: 100%; padding: 12px; background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: all 0.3s;">
+                    <i class="fas fa-sign-in-alt"></i> 登录
+                </button>
+            </form>
+            
+            <div style="text-align: center; margin-top: 25px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                <p style="margin: 5px 0; color: #666;">
+                    <strong>测试账号：</strong>
+                </p>
+                <p style="margin: 5px 0; color: #333;">
+                    <i class="fas fa-user"></i> 用户名：<strong>admin</strong>
+                </p>
+                <p style="margin: 5px 0; color: #333;">
+                    <i class="fas fa-key"></i> 密码：<strong>123456</strong>
+                </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="/" style="color: #666; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+                    <i class="fas fa-arrow-left"></i> 返回首页
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

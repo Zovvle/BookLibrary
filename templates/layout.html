@@ -1,16 +1,121 @@
-<!doctype html>
-<title> {% block title %} 图书管理系统 {% endblock %} </title>
-<link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
-<div class=page>
-  <h1>图书管理系统</h1>
-  <div class=navigation>
-    {% block link %}{% endblock %}
-  </div>
-  <div class=body>
-    {% block body %}{% endblock %}
-   </div>
-  <div class=footer>
-     &mdash; 华中科技大学
-  </div>
-</div>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}西南科技大学图书管理系统{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern-style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="page">
+        <div class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-book-open"></i>
+                    <h1>西南科技大学图书管理系统</h1>
+                </div>
+                <div class="user-info">
+                    {% if session.user_id %}
+                        <span class="welcome">
+                            <i class="fas fa-user"></i> 欢迎，{{ session.user_id }}
+                        </span>
+                        <a href="/logout" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> 注销
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="navigation">
+            <div class="nav-links">
+                {% if session.user_id %}
+                    {% if session.user_id == 'admin' %}
+                        <a href="/manager" class="nav-link">
+                            <i class="fas fa-home"></i> 管理首页
+                        </a>
+                        <a href="/manager/books" class="nav-link">
+                            <i class="fas fa-book"></i> 图书管理
+                        </a>
+                        <a href="/manager/users" class="nav-link">
+                            <i class="fas fa-users"></i> 用户管理
+                        </a>
+                    {% else %}
+                        <a href="/reader" class="nav-link">
+                            <i class="fas fa-home"></i> 读者首页
+                        </a>
+                        <a href="/reader/info" class="nav-link">
+                            <i class="fas fa-user"></i> 我的信息
+                        </a>
+                        <a href="/reader/query" class="nav-link">
+                            <i class="fas fa-search"></i> 图书查询
+                        </a>
+                        <a href="/reader/histroy" class="nav-link">
+                            <i class="fas fa-history"></i> 借阅历史
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <a href="/" class="nav-link">
+                        <i class="fas fa-home"></i> 首页
+                    </a>
+                    <a href="/manager_login" class="nav-link">
+                        <i class="fas fa-user-shield"></i> 管理员登录
+                    </a>
+                    <a href="/reader_login" class="nav-link">
+                        <i class="fas fa-user-graduate"></i> 读者登录
+                    </a>
+                    <a href="/register" class="nav-link">
+                        <i class="fas fa-user-plus"></i> 读者注册
+                    </a>
+                {% endif %}
+                {% block link %}{% endblock %}
+            </div>
+        </div>
+        
+        <div class="content-wrapper">
+            <div class="body">
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        <div class="flash-messages">
+                            {% for message in messages %}
+                                <div class="flash-message">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+                
+                {% block body %}{% endblock %}
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3><i class="fas fa-university"></i> 西南科技大学</h3>
+                    <p>图书馆管理系统</p>
+                    <p class="copyright">© 2024 西南科技大学 版权所有</p>
+                </div>
+                <div class="footer-section">
+                    <h4>快速导航</h4>
+                    <a href="/">系统首页</a>
+                    <a href="/manager_login">管理登录</a>
+                    <a href="/reader_login">读者登录</a>
+                    <a href="/register">新用户注册</a>
+                </div>
+                <div class="footer-section">
+                    <h4>联系我们</h4>
+                    <p><i class="fas fa-map-marker-alt"></i> 四川省绵阳市涪城区</p>
+                    <p><i class="fas fa-phone"></i> (0816) 6089888</p>
+                    <p><i class="fas fa-envelope"></i> library@swust.edu.cn</p>
+                </div>
+            </div>
+        </div>
+    </div>
     
+    {% block scripts %}{% endblock %}
+</body>
+</html>

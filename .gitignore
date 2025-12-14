@@ -33,3 +33,8 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+book.db
+venv/
+*.backup*
+__pycache__/
+*.pyc
