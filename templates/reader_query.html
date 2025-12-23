@@ -1,48 +1,64 @@
 {% extends "layout.html" %}
-{% block title%} 查询  {% endblock %}
+{% block title%} 图书查询 {% endblock %}
 {% block link %} 
 	<a href="{{ url_for('reader') }}"> 返回 </a>
 {% endblock %}
 {% block body %}
-	<h2> 查询 </h2> 
+	<h2> 图书查询 </h2> 
+	
 	{% if error %}
-	<div class=error>
-	  <strong>Errror : </strong> {{error}}
+	<div class="error-message">
+	  <strong>错误：</strong> {{ error }}
 	</div>
 	{% endif %}  
-    <div class=actions>
-	  <form action="" method="post">
-	    <dd>
-	      <select name="item">
-		<option value="name"> 书名 </option>
-		<option value="author"> 作者 </option>
+    
+    <div class="query-form">
+	  <form action="{{ url_for('reader_query') }}" method="post">
+	    <div class="form-group">
+	      <select name="item" class="form-select">
+			<option value="name"> 书名 </option>
+			<option value="author"> 作者 </option>
 	      </select>
-	      <input type="text" name="query" size="80"> 
-	      <input type="submit" value="查询">
-	    </dd> 
+	      <input type="text" name="query" size="60" placeholder="输入关键词..." 
+	             value="{{ request.form.query if request.method == 'POST' else '' }}"
+	             class="form-input"> 
+	      <input type="submit" value="查询" class="form-submit">
+	    </div> 
 	  </form>
 	</div>
+	
 	{% if books %}
-	<table width="600" border="1" align="center">
+	<div class="result-info">
+		找到 {{ books|length }} 条记录
+	</div>
+	
+	<table class="result-table">
 	  <tr>
-	    <th align="center"> ISBN </th>
-	    <th align="center"> 书名 </th>
-	    <th align="center"> 作者</th>
-	    <th align="center"> 出版商 </th>
-	    <th align="center"> 出版时间 </th>	
-	    <th align="center"> 查看信息 </th>
+	    <th> ISBN </th>
+	    <th> 书名 </th>
+	    <th> 作者</th>
+	    <th> 出版商 </th>
+	    <th> 出版时间 </th>	
+	    <th> 操作 </th>
 	  </tr>
 	  {% for book in books %}
 	  <tr>
-	    <th align="center"> {{book.book_id}}</th>
-	    <th align="center"> {{book.book_name}} </th>
-	    <th align="center"> {{book.author}}</th>
-	    <th align="center"> {{book.publish_com}} </th>
-	    <th align="center"> {{book.publish_date}}</th>
-	    <th align="center"> <a href="{{ url_for('reader_book', id=book.book_id)}}"> 点击进入 </a> </th>
+	    <td> {{ book.book_id }}</td>
+	    <td> {{ book.book_name }} </td>
+	    <td> {{ book.author }}</td>
+	    <td> {{ book.publish_com }} </td>
+	    <td> {{ book.publish_date }}</td>
+	    <td> <a href="{{ url_for('reader_book', id=book.book_id) }}" class="view-link">查看详情</a> </td>
 	  </tr>
 	  {% endfor %}
-	  {% endif %}
-	</table>	
+	</table>
+	{% endif %}
+	
+	<!-- 如果没有结果且不是错误提示 -->
+	{% if not books and not error and request.method == 'POST' %}
+	<div class="no-result">
+		未找到相关图书，请尝试其他关键词
+	</div>
+	{% endif %}
+	
 {% endblock %}
-

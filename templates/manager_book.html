@@ -1,32 +1,60 @@
 {% extends "layout.html" %}
-{% block title %} 图书主页 {% endblock %}
+{% block title %} 图书详情 - {{ book.book_name if book else '未知' }} {% endblock %}
 
 {% block link %}
-	<a href="{{ url_for('manager_books') }}"> 返回  </a> | 
+	<a href="{{ url_for('manager_books') }}"> 返回列表 </a> | 
 	{% if book %}
-	<a href="{{ url_for('manager_modify', id=book.book_id)}}"> 修改 </a>
-	{% endif%}
+	<a href="{{ url_for('manager_modify', id=book.book_id)}}"> 修改信息 </a>
+	{% endif %}
 {% endblock %}
-{% block body  %}
+
+{% block body %}
 	<h2> 图书信息 </h2>
 	{% if book %}
-	<li> ISBN            	{{book.book_id}} </li>
-	<li> 书名        		{{book.book_name}} </li>
-	<li> 作者        		{{book.author}} </li>	
-	<li> 出版社     	{{book.publish_com}} </li>
-	<li> 出版日期   	{{book.publish_date}} </li>
-	{% endif %}
-	<h2 > 借阅信息 </h2>
-	{% if reader  %}
-	<li> 借阅者姓名 {{reader.user_name}}</li>
-	<li> 借阅日期  {{reader.date_borrow}}</li>
-	<li> 还书日期  {{reader.date_return}}</li>
-	<form action="" method=post>
-	  <div class=actions>
-	    <input type=submit value="归还">
-	    </div>
-	</form>
+	<ul>
+		<li> ISBN： {{book.book_id}} </li>
+		<li> 书名： {{book.book_name}} </li>
+		<li> 作者： {{book.author}} </li>	
+		<li> 出版社： {{book.publish_com}} </li>
+		<li> 出版日期： {{book.publish_date}} </li>
+	</ul>
 	{% else %}
-	<li> 无 </li> 
+	<p>图书不存在</p>
+	{% endif %}
+	
+	<h2> 借阅状态 </h2>
+	
+	{% if reader %}
+		<!-- 已借出：显示借阅信息和还书按钮 -->
+		<p>📚 <strong>当前状态：已借出</strong></p>
+		<ul>
+			<li> 借阅者： {{ reader.user_name }}</li>
+			<li> 借阅日期： {{ reader.date_borrow }}</li>
+			<li> 应还日期： {{ reader.date_return }}</li>
+		</ul>
+		
+		<form action="{{ url_for('manager_book', id=book.book_id) }}" method="post">
+			<input type="hidden" name="action" value="return">
+			<div class="actions">
+				<input type="submit" value="确认归还" class="btn-return">
+			</div>
+		</form>
+		
+	{% else %}
+		<!-- 可借阅：显示借书表单 -->
+		{% if book %}
+		<p>✅ <strong>当前状态：可借阅</strong></p>
+		<form action="{{ url_for('borrow_book', id=book.book_id) }}" method="post">
+			<div class="borrow-form">
+				<label for="user_name">借阅者姓名：</label>
+				<input type="text" id="user_name" name="user_name" 
+					   placeholder="请输入借阅者姓名" required>
+				<br>
+				<input type="submit" value="确认借阅" class="btn-borrow">
+			</div>
+		</form>
+		{% else %}
+		<p>图书信息不存在，无法借阅</p>
+		{% endif %}
 	{% endif %}
 {% endblock %}

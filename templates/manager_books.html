@@ -7,24 +7,84 @@
 {%  endblock%}
 {% block body%}
 	<h2> 图书管理 </h2>
+	
+	<!-- 新增：搜索表单 -->
+	<div class="search-box">
+		<form action="{{ url_for('manager_books') }}" method="get" class="search-form">
+			<div class="search-controls">
+				<input type="text" 
+					   name="keyword" 
+					   placeholder="输入书名进行搜索..."
+					   value="{{ keyword or '' }}"
+					   class="search-input">
+				
+				<select name="search_type" class="search-select">
+					<option value="book_name" 
+						{% if not search_type or search_type == 'book_name' %}selected{% endif %}>
+						书名
+					</option>
+					<option value="book_id" 
+						{% if search_type == 'book_id' %}selected{% endif %}>
+						ISBN
+					</option>
+					<option value="author" 
+						{% if search_type == 'author' %}selected{% endif %}>
+						作者
+					</option>
+					<option value="all" 
+						{% if search_type == 'all' %}selected{% endif %}>
+						全部字段
+					</option>
+				</select>
+				
+				<button type="submit" class="search-btn">搜索</button>
+				{% if keyword %}
+				<a href="{{ url_for('manager_books') }}" class="clear-btn">清除搜索</a>
+				{% endif %}
+			</div>
+		</form>
+	</div>
+	
+	<!-- 原有表格 -->
 	<table width="600" border="1", align="center">
 	  <tr>
 	    <th align="center"> ISBN </th>
 	    <th align="center"> 书名 </th>
 	    <th align="center"> 作者</th>
-	    <th align="centet"> 出版商 </th>
+	    <th align="center"> 出版商 </th>
 	    <th align="center"> 出版时间 </th>	
 	    <th align="center"> 查看信息 </th>
 	  </tr>
 	  {% for book in books%}
 	  <tr>
-	    <th align="center"> {{book.book_id}}</th>
-	    <th align="center"> {{book.book_name}} </th>
-	    <th align="center"> {{book.author}}</th>
-	    <th align="centet"> {{book.publish_com}} </th>
-	    <th align="center"> {{book.publish_date}}</th>
-	    <th align="center"> <a href="{{ url_for('manager_book', id=book.book_id)}}"> 点击进入 </a> </th>
+	    <td align="center"> {{book.book_id}}</td>
+	    <td align="center"> {{book.book_name}} </td>
+	    <td align="center"> {{book.author}}</td>
+	    <td align="center"> {{book.publish_com}} </td>
+	    <td align="center"> {{book.publish_date}}</td>
+	    <td align="center"> 
+			<a href="{{ url_for('manager_book', id=book.book_id)}}" class="view-link">
+				点击进入
+			</a> 
+		</td>
 	  </tr>
 	  {% endfor %}
 	</table>
+	
+	<!-- 搜索结果提示 -->
+	{% if keyword %}
+	<div class="search-result-info">
+		搜索 "{{ keyword }}" 的结果，共 {{ books|length }} 条记录
+	</div>
+	{% endif %}
+	
+	<!-- 调试信息（临时添加，测试后可删除） -->
+	<div style="background:#f8f9fa; padding:10px; margin-top:20px; border-left:4px solid #007bff; font-size:12px; color:#666;">
+		<strong>调试信息：</strong>
+		关键词: "{{ keyword or '无' }}" | 
+		搜索类型: {{ search_type or '未设置' }} | 
+		图书数量: {{ books|length }} |
+		<a href="{{ url_for('manager_book', id=1) }}" target="_blank">测试第一本书</a>
+	</div>
+	
 {% endblock%}

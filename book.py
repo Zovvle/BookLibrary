@@ -37,9 +37,25 @@ def close_database(exception):
 def init_db():
     with app.app_context():
         db = get_db()
-        with app.open_resource('book.sql', mode='r') as f:
-            db.cursor().executescript(f.read())
-        db.commit()
+        try:
+            # 方法1：使用标准Python方式打开文件
+            with open('book.sql', 'r', encoding='utf-8') as f:
+                db.cursor().executescript(f.read())
+            
+            # 或者方法2：使用 pathlib（更现代）
+            # from pathlib import Path
+            # sql_content = Path('book.sql').read_text(encoding='utf-8')
+            # db.cursor().executescript(sql_content)
+            
+            db.commit()
+            print("✅ 数据库初始化成功！")
+            
+        except FileNotFoundError:
+            print("❌ 错误：找不到 book.sql 文件")
+            return
+        except Exception as e:
+            print(f"❌ 数据库初始化失败：{e}")
+            return
 
 def query_db(query, args=(), one=False):
     cur = get_db().execute(query, args)
@@ -135,8 +151,32 @@ def reader_judge():
 @app.route('/manager/books')
 def manager_books():
     manager_judge()
-    return render_template('manager_books.html',
-            books = query_db('select * from books', []))
+    
+    # 获取搜索参数，默认搜索书名为空，搜索类型为书名
+    keyword = request.args.get('keyword', '')
+    search_type = request.args.get('search_type', 'book_name')  # 默认按书名
+    
+    if keyword:
+        if search_type == 'book_id':
+            books = query_db('''select * from books where book_id like ?''', 
+                           [f'%{keyword}%'])
+        elif search_type == 'book_name':
+            books = query_db('''select * from books where book_name like ?''', 
+                           [f'%{keyword}%'])
+        elif search_type == 'author':
+            books = query_db('''select * from books where author like ?''', 
+                           [f'%{keyword}%'])
+        else:  # 全部字段
+            books = query_db('''select * from books where 
+                              book_id like ? or book_name like ? or author like ?''',
+                           [f'%{keyword}%', f'%{keyword}%', f'%{keyword}%'])
+    else:
+        books = query_db('''select * from books''')
+    
+    return render_template('manager_books.html', 
+                         books=books, 
+                         keyword=keyword,
+                         search_type=search_type)
 
 @app.route('/manager')
 def manager():
@@ -156,7 +196,7 @@ def manager_users():
 
 @app.route('/manager/user/modify/<id>', methods=['GET', 'POST'])
 def manger_user_modify(id):
-    user_judge()
+    manager_judge()
     error = None
     user = query_db('''select * from users where user_id = ?''', [id], one=True)
     if request.method == 'POST':
@@ -234,24 +274,36 @@ def manager_books_delete():
                 return redirect(url_for('manager_books'))
     return render_template('manager_books_delete.html', error = error)
 
-@app.route('/manager/book/<id>', methods=['GET', 'POST'])
+@app.route('/manager/book/<int:id>', methods=['GET', 'POST'])
 def manager_book(id):
     manager_judge()
+    
     book = query_db('''select * from books where book_id = ?''', [id], one=True)
+    if not book:
+        return "图书不存在", 404
+    
     reader = query_db('''select * from borrows where book_id = ?''', [id], one=True)
-    name = query_db('''select user_name from borrows where book_id = ?''', [id], one=True)
-
-    current_time = time.strftime('%Y-%m-%d',time.localtime(time.time()))
+    
+    # 处理还书请求
     if request.method == 'POST':
-        db = get_db()
-        db.execute('''update histroys set status = ?, date_return = ?  where book_id=?
-            and user_name=? and status=? ''',
-               ['retruned', current_time, id, name[0], 'not return'])
-        db.execute('''delete from borrows where book_id = ? ''' , [id])
-        db.commit()
-        return redirect(url_for('manager_book', id = id))
-        return render_template('manager_book.html', book = book, reader = reader)
-
+        if request.form.get('action') == 'return' and reader:
+            current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+            db = get_db()
+            
+            # 更新历史记录
+            db.execute('''update histroys 
+                          set status = ?, date_return = ?  
+                          where book_id=? and user_name=?''',
+                       ['returned', current_time, id, reader['user_name']])
+            
+            # 从借阅表中删除
+            db.execute('''delete from borrows where book_id = ?''', [id])
+            db.commit()
+            
+            flash('图书归还成功！')
+            return redirect(url_for('manager_book', id=id))
+    
+    return render_template('manager_book.html', book=book, reader=reader)
 @app.route('/manager/user/<id>', methods=['GET', 'POST'])
 def manager_user(id):
     manager_judge()
@@ -317,59 +369,93 @@ def reader_modify():
     return render_template('reader_modify.html', user=user, error = error)
 
 
-
 @app.route('/reader/query', methods=['GET', 'POST'])
 def reader_query():
     reader_judge()
     error = None
     books = None
+    
     if request.method == 'POST':
-        if request.form['item'] == 'name':
-            if not request.form['query']:
-                error = 'You have to input the book name'
-            else:
-                books = query_db('''select * from books where book_name = ?''',
-                        [request.form['query']])
-                if not books:
-                    error = 'Invalid book name'
+        # 获取表单数据
+        query_key = request.form.get('query', '').strip()  # 模板中是 name="query"
+        item = request.form.get('item', 'name')            # 模板中是 name="item"
+        
+        print(f"=== 调试信息 ===")
+        print(f"查询关键词: '{query_key}'")
+        print(f"查询类型: '{item}'")
+        
+        if not query_key:
+            error = '请输入查询关键词'
         else:
-            if not request.form['query']:
-                error = 'You have to input the book author'
-            else:
-                books = query_db('''select * from books where author = ?''',
-                        [request.form['query']])
+            if item == 'name':  # 按书名查询
+                # 使用模糊查询 LIKE 和 % 通配符
+                books = query_db('''select * from books where book_name like ?''',
+                        [f'%{query_key}%'])  # 关键：添加 % 进行模糊匹配
+                
                 if not books:
-                    error = 'Invalid book author'
-    return render_template('reader_query.html', books = books, error = error)
+                    error = f'未找到包含 "{query_key}" 的图书'
+                    
+            else:  # item == 'author'，按作者查询
+                # 使用模糊查询 LIKE 和 % 通配符
+                books = query_db('''select * from books where author like ?''',
+                        [f'%{query_key}%'])  # 关键：添加 % 进行模糊匹配
+                
+                if not books:
+                    error = f'未找到作者包含 "{query_key}" 的图书'
+            
+            print(f"查询到 {len(books) if books else 0} 条记录")
+    
+    return render_template('reader_query.html', books=books, error=error)
+
 
 @app.route('/reader/book/<id>', methods=['GET', 'POST'])
 def reader_book(id):
+    """读者查看图书详情并借书（修复版）"""
     reader_judge()
+    
     error = None
     book = query_db('''select * from books where book_id = ?''', [id], one=True)
+    
+    if not book:
+        return "图书不存在", 404
+    
     reader = query_db('''select * from borrows where book_id = ?''', [id], one=True)
-    count  = query_db('''select count(book_id) from borrows where user_name = ? ''',
-              [g.user], one = True)
-
-    current_time = time.strftime('%Y-%m-%d',time.localtime(time.time()))
-    return_time = time.strftime('%Y-%m-%d',time.localtime(time.time() + 2600000))
+    count = query_db('''select count(book_id) from borrows where user_name = ?''',
+                     [g.user], one=True)
+    
+    # 处理借书请求（POST）
     if request.method == 'POST':
         if reader:
-            error = 'The book has already borrowed.'
+            error = '该书已被借阅！'
         else:
-            if count[0] == 3:
-                error = 'You can\'t borrow more than three books.'
+            if count and count[0] >= 3:  # 检查借阅数量限制
+                error = '每人最多只能借阅3本书！'
             else:
+                current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+                return_time = time.strftime('%Y-%m-%d', time.localtime(time.time() + 2600000))
+                
                 db = get_db()
-                db.execute('''insert into borrows (user_name, book_id, date_borrow, \
-                    date_return) values (?, ?, ?, ?) ''', [g.user, id,
-                                           current_time, return_time])
-                db.execute('''insert into histroys (user_name, book_id, date_borrow, \
-                    status) values (?, ?, ?, ?) ''', [g.user, id,
-                                           current_time, 'not return'])
-                db.commit()
-                return redirect(url_for('reader_book', id = id))
-        return render_template('reader_book.html', book = book, reader = reader, error = error)
+                try:
+                    # 1. 添加到借阅表
+                    db.execute('''insert into borrows (user_name, book_id, date_borrow, date_return) 
+                                  values (?, ?, ?, ?)''', 
+                               [g.user, id, current_time, return_time])
+                    
+                    # 2. 添加到历史记录表
+                    db.execute('''insert into histroys (user_name, book_id, date_borrow, status) 
+                                  values (?, ?, ?, ?)''', 
+                               [g.user, id, current_time, 'borrowed'])
+                    
+                    db.commit()
+                    flash('借书成功！', 'success')
+                    return redirect(url_for('reader_book', id=id))
+                    
+                except Exception as e:
+                    db.rollback()
+                    error = f'借书失败：{str(e)}'
+    
+    # ✅ 统一返回：无论是GET请求还是POST请求（有错误时）
+    return render_template('reader_book.html', book=book, reader=reader, error=error)
 
 @app.route('/reader/histroy', methods=['GET', 'POST'])
 def reader_histroy():
@@ -378,9 +464,62 @@ def reader_histroy():
 
     return render_template('reader_histroy.html', histroys = histroys)
 
+
+@app.route('/book/borrow/<int:id>', methods=['POST'])
+def borrow_book(id):
+    """管理员借书功能"""
+    manager_judge()
+    
+    # 获取借阅者姓名
+    user_name = request.form.get('user_name', '').strip()
+    if not user_name:
+        flash('请输入借阅者姓名！', 'error')
+        return redirect(url_for('manager_book', id=id))
+    
+    # 查询图书信息
+    book = query_db('''select * from books where book_id = ?''', [id], one=True)
+    if not book:
+        flash('图书不存在！', 'error')
+        return redirect(url_for('manager_books'))
+    
+    # 检查是否已被借阅
+    borrowed = query_db('''select * from borrows where book_id = ?''', [id], one=True)
+    if borrowed:
+        flash('该书已被借阅！', 'error')
+        return redirect(url_for('manager_book', id=id))
+    
+    # 计算借阅日期和应还日期
+    current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+    return_date = time.strftime('%Y-%m-%d', 
+                               time.localtime(time.time() + 30*24*3600))  # 30天后
+    
+    db = get_db()
+    try:
+        # 1. 添加到借阅表
+        db.execute('''insert into borrows (book_id, user_name, date_borrow, date_return) 
+                      values (?, ?, ?, ?)''',
+                   [id, user_name, current_time, return_date])
+        
+        # 2. 添加到历史记录表（注意：表名是 histroys，可能是拼写错误，应该是 histories）
+        db.execute('''insert into histroys (book_id, user_name, date_borrow, status) 
+                      values (?, ?, ?, ?)''',
+                   [id, user_name, current_time, 'borrowed'])
+        
+        db.commit()
+        flash(f'成功借阅《{book["book_name"]}》给 {user_name}', 'success')
+        
+    except Exception as e:
+        db.rollback()
+        flash(f'借阅失败：{str(e)}', 'error')
+    
+    return redirect(url_for('manager_book', id=id))
+
+
+
+
+
 if __name__ == '__main__':
     init_db()
     app.run(debug=True)
-
 
 

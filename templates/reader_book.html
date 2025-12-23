@@ -13,27 +13,167 @@
 	  <strong>Errror : </strong> {{error}}
 	</div>
 	{% endif %}
+	
+	{% with messages = get_flashed_messages() %}
+	  {% if messages %}
+	  <div class="success-message">
+		{% for message in messages %}
+		  <strong>提示：</strong> {{ message }}
+		{% endfor %}
+	  </div>
+	  {% endif %}
+	{% endwith %}
+	
 	<h2> 书目信息 </h2>
 	{% if book %}
-	<li> ISBN            	{{book.book_id}} </li>
-	<li> 书名        		{{book.book_name}} </li>
-	<li> 作者        		{{book.author}} </li>	
-	<li> 出版社     	{{book.publish_com}} </li>
-	<li> 出版日期   	{{book.publish_date}} </li>
+	<ul>
+		<li> ISBN：            	{{book.book_id}} </li>
+		<li> 书名：        		{{book.book_name}} </li>
+		<li> 作者：        		{{book.author}} </li>	
+		<li> 出版社：     	{{book.publish_com}} </li>
+		<li> 出版日期：   	{{book.publish_date}} </li>
+	</ul>
+	{% else %}
+	<p>图书不存在</p>
 	{% endif %}
-	<div >
-	  <h2 > 借阅信息 </h2>
-	  {% if reader  %}
-	  <li> 借阅者姓名 {{reader.user_name}}</li>
-	  <li> 借阅日期  {{reader.date_borrow}}</li>
-	  <li> 还书日期  {{reader.date_return}}</li>
-	  {% else %}
-	  <li> 无 </li>
-	  {% endif %}
-	  <form action="" method=post>
-	    <div class=actions>
-	      <input type=submit value="借阅">
-	    </div>
-	  </form>
-
+	
+	<h2> 借阅状态 </h2>
+	
+	{% if reader %}
+		<!-- 已借出的情况 -->
+		{% if reader.user_name == g.user %}
+			<p><strong>📚 您已借阅本书</strong></p>
+			<ul>
+				<li> 借阅者： {{ reader.user_name }}</li>
+				<li> 借阅日期： {{ reader.date_borrow }}</li>
+				<li> 应还日期： {{ reader.date_return }}</li>
+			</ul>
+		{% else %}
+			<p><strong>📚 本书已被借阅</strong></p>
+			<ul>
+				<li> 借阅者： {{ reader.user_name }}</li>
+				<li> 借阅日期： {{ reader.date_borrow }}</li>
+				<li> 应还日期： {{ reader.date_return }}</li>
+			</ul>
+			<p>本书暂时不可借</p>
+		{% endif %}
+	{% else %}
+		<!-- 可借阅的情况 -->
+		{% if book %}
+			<p><strong>✅ 本书可借阅</strong></p>
+			
+			<!-- 获取用户的借阅数量 -->
+			{% set user_borrow_count = count[0] if count else 0 %}
+			
+			{% if user_borrow_count >= 3 %}
+				<p class="error-text">❌ 您已借阅 {{ user_borrow_count }} 本书，已达上限（3本）</p>
+			{% else %}
+				<form action="{{ url_for('reader_book', id=book.book_id) }}" method="post" 
+					  onsubmit="return confirmBorrow('{{ book.book_name|e }}', '{{ book.author|e }}')">
+					<div class=actions>
+						<input type="submit" value="借阅本书" class="btn-borrow">
+					</div>
+				</form>
+				
+				<!-- 借书确认提示脚本 -->
+				<script>
+				function confirmBorrow(bookName, author) {
+					// 计算30天后的应还日期
+					var today = new Date();
+					var returnDate = new Date(today);
+					returnDate.setDate(today.getDate() + 30);
+					
+					// 格式化日期为 YYYY-MM-DD
+					var formatDate = function(date) {
+						var year = date.getFullYear();
+						var month = (date.getMonth() + 1).toString().padStart(2, '0');
+						var day = date.getDate().toString().padStart(2, '0');
+						return year + '-' + month + '-' + day;
+					};
+					
+					var todayStr = formatDate(today);
+					var returnDateStr = formatDate(returnDate);
+					
+					// 创建确认消息
+					var message = "📚 确认借阅\n\n" +
+								"书名：《" + bookName + "》\n" +
+								"作者：" + author + "\n\n" +
+								"借阅日期：" + todayStr + "\n" +
+								"应还日期：" + returnDateStr + "\n" +
+								"（借期30天）\n\n" +
+								"确定要借阅这本书吗？";
+					
+					// 显示确认对话框，如果用户点击"确定"则返回true，提交表单
+					return confirm(message);
+				}
+				</script>
+			{% endif %}
+		{% else %}
+			<p>图书信息不存在，无法借阅</p>
+		{% endif %}
+	{% endif %}
+	
+	<style>
+		.error {
+			background-color: #ffebee;
+			color: #c62828;
+			padding: 10px;
+			margin: 10px 0;
+			border-radius: 4px;
+			border-left: 4px solid #c62828;
+		}
+		
+		.success-message {
+			background-color: #e8f5e9;
+			color: #2e7d32;
+			padding: 10px;
+			margin: 10px 0;
+			border-radius: 4px;
+			border-left: 4px solid #4caf50;
+		}
+		
+		.error-text {
+			color: #c62828;
+			font-weight: bold;
+			padding: 10px;
+			background-color: #ffebee;
+			border-radius: 4px;
+		}
+		
+		.btn-borrow {
+			background-color: #4CAF50;
+			color: white;
+			padding: 10px 20px;
+			border: none;
+			border-radius: 4px;
+			cursor: pointer;
+			font-size: 16px;
+			font-weight: bold;
+		}
+		
+		.btn-borrow:hover {
+			background-color: #45a049;
+		}
+		
+		h2 {
+			color: #333;
+			border-bottom: 2px solid #4CAF50;
+			padding-bottom: 5px;
+			margin-top: 20px;
+		}
+		
+		ul {
+			list-style-type: none;
+			padding-left: 0;
+		}
+		
+		li {
+			padding: 8px 0;
+			border-bottom: 1px solid #eee;
+		}
+		
+		li:last-child {
+			border-bottom: none;
+		}
+	</style>
 {% endblock %}
